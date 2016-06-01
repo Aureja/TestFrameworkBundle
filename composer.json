@@ -1,0 +1,31 @@
+{
+    "name": "aureja/test-framework-bundle",
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Tadas Gliaubicas",
+            "email": "tadas.gliaubicas@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.4",
+
+        "symfony/framework-bundle" : ">=2.7|~3.0",
+        "symfony/doctrine-bridge": ">=2.7|~3.0",
+        "doctrine/orm": "~2.5"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "~4.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Aureja\\Bundle\\TestFrameworkBundle\\": ""
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "0.1-dev"
+        }
+    }
+}
