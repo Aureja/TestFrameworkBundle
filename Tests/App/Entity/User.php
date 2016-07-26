@@ -18,6 +18,9 @@ namespace Aureja\Bundle\TestFrameworkBundle\Tests\App\Entity;
  */
 class User
 {
+    /**
+     * @var int
+     */
     private $id;
 
     /**
