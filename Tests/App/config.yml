@@ -1,0 +1,27 @@
+framework:
+    secret: secret
+    test: ~
+    session:
+        # handler_id set to null will use default session handler from php.ini
+        handler_id:  ~
+        storage_id: session.storage.filesystem
+        # https://groups.google.com/forum/#!topic/symfony2/IB-CpMgo5o0
+        name: MOCKSESSID
+    profiler:
+        collect: false
+
+doctrine:
+    dbal:
+        driver: pdo_sqlite
+        path: %kernel.cache_dir%/test.db
+        charset: UTF8
+    orm:
+        default_entity_manager: default
+        entity_managers:
+            default:
+                connection: default
+                mappings:
+                    AurejaTestFrameworkBundle:
+                        type: yml
+                        dir: "%kernel.root_dir%/../App/Resources/config/doctrine"
+                        prefix: "Aureja\Bundle\TestFrameworkBundle\Tests\App\Entity"

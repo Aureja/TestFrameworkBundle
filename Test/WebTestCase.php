@@ -30,12 +30,7 @@ abstract class WebTestCase extends BaseWebTestCase
     /**
      * @var Client
      */
-    protected static $clientInstance;
-
-    /**
-     * @var Client
-     */
-    protected $client;
+    private static $clientInstance;
 
     /**
      * @var bool[]
@@ -45,7 +40,27 @@ abstract class WebTestCase extends BaseWebTestCase
     /**
      * @var Connection[]
      */
-    protected static $dbIsolationConnections = [];
+    private static $connections = [];
+
+    /**
+     * @return Client
+     */
+    protected function getClient()
+    {
+        return self::$clientInstance;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function tearDownAfterClass()
+    {
+        if (self::getDbIsolation()) {
+            self::rollbackTransaction();
+        }
+
+        self::$clientInstance = null;
+    }
 
     /**
      * Creates a Client.
@@ -62,38 +77,28 @@ abstract class WebTestCase extends BaseWebTestCase
             $this->resetClient();
         }
 
-        if (!self::$clientInstance) {
-            // Fix for: The "native_profiler" extension is not enabled in "*.html.twig".
-            // If you still getting this exception please run "php app/console cache:clear --env=test --no-debug".
-            // The cache will be cleared and warmed up without the twig profiler.
-            if (!isset($options['debug'])) {
+        if (null === self::$clientInstance) {
+            if (false === isset($options['debug'])) {
                 $options['debug'] = false;
             }
 
-            $this->client = self::$clientInstance = static::createClient($options, $server);
+            self::$clientInstance = static::createClient($options, $server);
 
-            if (self::getDbIsolationSetting()) {
+            if (self::getDbIsolation()) {
                 $this->startTransaction();
             }
         }
-
-        $this->client = self::$clientInstance;
     }
 
-    /**
-     * Get value of dbIsolation option from annotation of called class.
-     *
-     * @return bool
-     */
-    private static function getDbIsolationSetting()
+    protected function resetClient()
     {
-        $calledClass = get_called_class();
+        if (self::$clientInstance) {
+            if (self::getDbIsolation()) {
+                $this->rollbackTransaction();
+            }
 
-        if (false === isset(self::$dbIsolation[$calledClass])) {
-            self::$dbIsolation[$calledClass] = self::isClassHasAnnotation($calledClass, self::DB_ISOLATION_ANNOTATION);
+            self::$clientInstance = null;
         }
-
-        return self::$dbIsolation[$calledClass];
     }
 
     /**
@@ -103,23 +108,23 @@ abstract class WebTestCase extends BaseWebTestCase
      */
     protected function startTransaction()
     {
-        if (false === $this->client instanceof Client) {
+        if (false === self::$clientInstance instanceof Client) {
             throw LogicException::create('The client must be instance of Client');
         }
 
-        if (null === $this->client->getContainer()) {
+        if (null === self::$clientInstance->getContainer()) {
             throw LogicException::create('The client missing a container. Make sure the kernel was booted');
         }
 
         /** @var RegistryInterface $registry */
-        $registry = $this->client->getContainer()->get('doctrine');
+        $registry = self::$clientInstance->getContainer()->get('doctrine');
 
         foreach ($registry->getManagers() as $name => $em) {
             if ($em instanceof EntityManagerInterface) {
                 $em->clear();
                 $em->getConnection()->beginTransaction();
 
-                self::$dbIsolationConnections[$name . '_' . uniqid()] = $em->getConnection();
+                self::$connections[$name . '_' . uniqid()] = $em->getConnection();
             }
         }
     }
@@ -129,13 +134,29 @@ abstract class WebTestCase extends BaseWebTestCase
      */
     protected static function rollbackTransaction()
     {
-        foreach (self::$dbIsolationConnections as $name => $connection) {
+        foreach (self::$connections as $connection) {
             while ($connection->isConnected() && $connection->isTransactionActive()) {
                 $connection->rollBack();
             }
         }
 
-        self::$dbIsolationConnections = [];
+        self::$connections = [];
+    }
+
+    /**
+     * Get value of dbIsolation option from annotation of called class.
+     *
+     * @return bool
+     */
+    private static function getDbIsolation()
+    {
+        $calledClass = get_called_class();
+
+        if (false === isset(self::$dbIsolation[$calledClass])) {
+            self::$dbIsolation[$calledClass] = self::hasAnnotation($calledClass, self::DB_ISOLATION_ANNOTATION);
+        }
+
+        return self::$dbIsolation[$calledClass];
     }
 
     /**
@@ -144,7 +165,7 @@ abstract class WebTestCase extends BaseWebTestCase
      *
      * @return bool
      */
-    private static function isClassHasAnnotation($className, $annotationName)
+    private static function hasAnnotation($className, $annotationName)
     {
         $annotations = \PHPUnit_Util_Test::parseTestMethodAnnotations($className);
 

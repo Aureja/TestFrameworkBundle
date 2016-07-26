@@ -1,0 +1,9 @@
+Aureja\Bundle\TestFrameworkBundle\Tests\App\Entity\User:
+    type: entity
+    table: 'aureja_test_user'
+    id:
+        id:
+            type: integer
+            id: true
+            generator:
+                strategy: AUTO
