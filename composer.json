@@ -22,7 +22,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Aureja\\Bundle\\TestFrameworkBundle\\": ""
+            "Aureja\\Bundle\\TestFrameworkBundle\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Aureja\\Bundle\\TestFrameworkBundle\\Tests\\": "tests/"
         }
     },
     "extra": {

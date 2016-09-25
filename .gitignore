@@ -1,6 +1,6 @@
 /.idea/
-!/Tests/App/cache/
-/Tests/App/cache/*
-!Tests/App/cache/.gitkeep
+!/tests/App/cache/
+/tests/App/cache/*
+!tests/App/cache/.gitkeep
 /vendor/
 /composer.lock
