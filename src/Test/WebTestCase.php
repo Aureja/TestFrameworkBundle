@@ -11,12 +11,10 @@
 
 namespace Aureja\Bundle\TestFrameworkBundle\Test;
 
-use Aureja\Bundle\TestFrameworkBundle\Exception\LogicException;
-use Doctrine\DBAL\Connection;
-use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bridge\Doctrine\RegistryInterface;
+use Aureja\Bundle\TestFrameworkBundle\DbIsolationTrait;
 use Symfony\Bundle\FrameworkBundle\Client;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase as BaseWebTestCase;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * @author Tadas Gliaubicas <tadcka89@gmail.com>
@@ -25,7 +23,10 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase as BaseWebTestCase;
  */
 abstract class WebTestCase extends BaseWebTestCase
 {
+    use DbIsolationTrait;
+
     const DB_ISOLATION_ANNOTATION = 'dbIsolation';
+    const DB_ISOLATION_PER_TEST_ANNOTATION = 'dbIsolationPerTest';
 
     /**
      * @var Client
@@ -38,9 +39,9 @@ abstract class WebTestCase extends BaseWebTestCase
     private static $dbIsolation;
 
     /**
-     * @var Connection[]
+     * @var bool[]
      */
-    private static $connections = [];
+    private static $dbIsolationPerTest;
 
     /**
      * @return Client
@@ -53,9 +54,27 @@ abstract class WebTestCase extends BaseWebTestCase
     /**
      * {@inheritdoc}
      */
+    protected function tearDown()
+    {
+        if (self::hasDbIsolationPerTestAnnotation()) {
+            $this->rollbackTransaction();
+        }
+
+        $refClass = new \ReflectionClass($this);
+        foreach ($refClass->getProperties() as $prop) {
+            if (false === $prop->isStatic() && 0 !== strpos($prop->getDeclaringClass()->getName(), 'PHPUnit_')) {
+                $prop->setAccessible(true);
+                $prop->setValue($this, null);
+            }
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public static function tearDownAfterClass()
     {
-        if (self::getDbIsolation()) {
+        if (self::hasDbIsolationAnnotation() || self::hasDbIsolationPerTestAnnotation()) {
             self::rollbackTransaction();
         }
 
@@ -73,7 +92,7 @@ abstract class WebTestCase extends BaseWebTestCase
      */
     protected function initClient(array $options = [], array $server = [], $force = false)
     {
-        if ($force) {
+        if ($force || self::hasDbIsolationPerTestAnnotation()) {
             $this->resetClient();
         }
 
@@ -84,16 +103,19 @@ abstract class WebTestCase extends BaseWebTestCase
 
             self::$clientInstance = static::createClient($options, $server);
 
-            if (self::getDbIsolation()) {
+            if (self::hasDbIsolationAnnotation() || self::hasDbIsolationPerTestAnnotation()) {
                 $this->startTransaction();
             }
         }
     }
 
+    /**
+     * Reset client.
+     */
     protected function resetClient()
     {
         if (self::$clientInstance) {
-            if (self::getDbIsolation()) {
+            if (self::hasDbIsolationAnnotation() || self::hasDbIsolationPerTestAnnotation()) {
                 $this->rollbackTransaction();
             }
 
@@ -102,45 +124,11 @@ abstract class WebTestCase extends BaseWebTestCase
     }
 
     /**
-     * Start transaction.
-     *
-     * @throws LogicException
+     * @return null|ContainerInterface
      */
-    protected function startTransaction()
+    protected function getContainer()
     {
-        if (false === self::$clientInstance instanceof Client) {
-            throw LogicException::create('The client must be instance of Client');
-        }
-
-        if (null === self::$clientInstance->getContainer()) {
-            throw LogicException::create('The client missing a container. Make sure the kernel was booted');
-        }
-
-        /** @var RegistryInterface $registry */
-        $registry = self::$clientInstance->getContainer()->get('doctrine');
-
-        foreach ($registry->getManagers() as $name => $em) {
-            if ($em instanceof EntityManagerInterface) {
-                $em->clear();
-                $em->getConnection()->beginTransaction();
-
-                self::$connections[$name . '_' . uniqid()] = $em->getConnection();
-            }
-        }
-    }
-
-    /**
-     * Rollback transaction.
-     */
-    protected static function rollbackTransaction()
-    {
-        foreach (self::$connections as $connection) {
-            while ($connection->isConnected() && $connection->isTransactionActive()) {
-                $connection->rollBack();
-            }
-        }
-
-        self::$connections = [];
+        return $this->getClient()->getContainer();
     }
 
     /**
@@ -148,15 +136,32 @@ abstract class WebTestCase extends BaseWebTestCase
      *
      * @return bool
      */
-    private static function getDbIsolation()
+    private static function hasDbIsolationAnnotation()
     {
         $calledClass = get_called_class();
-
         if (false === isset(self::$dbIsolation[$calledClass])) {
             self::$dbIsolation[$calledClass] = self::hasAnnotation($calledClass, self::DB_ISOLATION_ANNOTATION);
         }
 
         return self::$dbIsolation[$calledClass];
+    }
+
+    /**
+     * Get value of dbIsolationPerTest option from annotation of called class
+     *
+     * @return bool
+     */
+    private static function hasDbIsolationPerTestAnnotation()
+    {
+        $calledClass = get_called_class();
+        if (!isset(self::$dbIsolationPerTest[$calledClass])) {
+            self::$dbIsolationPerTest[$calledClass] = self::hasAnnotation(
+                $calledClass,
+                self::DB_ISOLATION_PER_TEST_ANNOTATION
+            );
+        }
+
+        return self::$dbIsolationPerTest[$calledClass];
     }
 
     /**

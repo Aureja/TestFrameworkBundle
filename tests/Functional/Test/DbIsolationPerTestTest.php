@@ -22,9 +22,9 @@ use Doctrine\ORM\Tools\SchemaTool;
  *
  * @since 7/26/16 8:23 PM
  *
- * @dbIsolation
+ * @dbIsolationPerTest
  */
-class WebTestCaseTest extends WebTestCase
+class DbIsolationPerTestTest extends WebTestCase
 {
     /**
      * @var EntityManagerInterface
@@ -38,12 +38,13 @@ class WebTestCaseTest extends WebTestCase
     {
         $this->initClient();
 
-        $this->em = $this->getClient()->getContainer()->get('doctrine.orm.entity_manager');
-        $this->createSchema();
+        $this->em = $this->getContainer()->get('doctrine.orm.entity_manager');
     }
 
     public function testInsertData()
     {
+        $this->createSchema();
+
         $user = new User();
         $this->em->persist($user);
         $this->em->flush();
@@ -53,6 +54,8 @@ class WebTestCaseTest extends WebTestCase
 
     public function testRollback()
     {
+        $this->createSchema();
+
         $user = new User();
         $this->em->persist($user);
         $this->em->flush();
