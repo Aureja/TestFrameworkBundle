@@ -1,5 +1,7 @@
 # TestFrameworkBundle
 
+[![Build Status](https://travis-ci.org/Aureja/TestFrameworkBundle.svg?branch=master)](https://travis-ci.org/Aureja/TestFrameworkBundle)
+
 This Bundle provides base classes for functional tests to assist in setting up test-databases.
 
 ## Installation
@@ -30,7 +32,6 @@ class AppKernel extends Kernel
 ```
 
 **Step 3**. Basic usage
-
 
 ```php
 <?php
