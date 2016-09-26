@@ -43,6 +43,14 @@ use Aureja\Bundle\TestFrameworkBundle\Test\WebTestCase;
  */
 class AcmeTest extends WebTestCase
 {
+    /**
+     * {@inheritdoc}
+     */
+    protected function setUp()
+    {
+        $this->initClient();
+    }
+
     // Tests
 }
 ```
@@ -59,6 +67,14 @@ use Aureja\Bundle\TestFrameworkBundle\Test\WebTestCase;
  */
 class AcmeTest extends WebTestCase
 {
+    /**
+     * {@inheritdoc}
+     */
+    protected function setUp()
+    {
+        $this->initClient();
+    }
+
     // Tests
 }
 ```
