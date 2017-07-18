@@ -51,12 +51,12 @@ trait DbIsolationTrait
 
         /** @var RegistryInterface $registry */
         $registry = $this->getClient()->getContainer()->get('doctrine');
+        $managers = $registry->getManagers();
 
         /** @var  Connection $connection */
         foreach ($registry->getConnections() as $name => $connection) {
-            $em = $registry->getManager($name);
-            if ($em instanceof EntityManagerInterface) {
-                $em->clear();
+            if (isset($managers[$name]) && $managers[$name] instanceof EntityManagerInterface) {
+                $managers[$name]->clear();
             }
 
             $connection->beginTransaction();
