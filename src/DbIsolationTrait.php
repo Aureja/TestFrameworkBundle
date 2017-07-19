@@ -51,13 +51,16 @@ trait DbIsolationTrait
 
         /** @var RegistryInterface $registry */
         $registry = $this->getClient()->getContainer()->get('doctrine');
-        foreach ($registry->getManagers() as $name => $em) {
-            if ($em instanceof EntityManagerInterface) {
-                $em->clear();
-                $em->getConnection()->beginTransaction();
+        $managers = $registry->getManagers();
 
-                self::$dbIsolationConnections[$name . '_' . uniqid()] = $em->getConnection();
+        /** @var  Connection $connection */
+        foreach ($registry->getConnections() as $name => $connection) {
+            if (isset($managers[$name]) && $managers[$name] instanceof EntityManagerInterface) {
+                $managers[$name]->clear();
             }
+
+            $connection->beginTransaction();
+            self::$dbIsolationConnections[$name . '_' . uniqid()] = $connection;
         }
     }
 
@@ -75,4 +78,3 @@ trait DbIsolationTrait
         self::$dbIsolationConnections = [];
     }
 }
- 
